@@ -1,0 +1,9 @@
+
+/* Finn Launcher: bundled home-screen wallpaper */
+#main-view {
+  background-color: #000000 !important;
+  background-image: url("Finn-Launcher-Wallpaper.png") !important;
+  background-repeat: no-repeat !important;
+  background-position: right bottom !important;
+  background-size: contain !important;
+}
