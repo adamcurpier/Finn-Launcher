@@ -4,7 +4,7 @@ This script DOES NOT connect to or modify the phone. It writes a new application
 in a sibling Finn-Launcher-Build folder; it never overwrites the source ZIP.
 
 Usage (from the project folder):
-    py .\Finn-Launcher-GitHub\build_finn_launcher.py .\TCL-Launcher-Recovery-Step234.zip
+    py .\build_finn_launcher.py .\original-launcher.zip
 """
 
 from pathlib import Path
