@@ -18,6 +18,29 @@ Finn Launcher features monochrome Labrador artwork, a clock, and four simple men
 
 The device's **system** wallpaper should also be set to the supplied solid-black image. This prevents the previous system wallpaper briefly appearing when returning to Finn Launcher. The black image is *not* automatically installed as the system wallpaper by the builder.
 
+## Choose your calendar edition
+
+Finn Launcher offers two editions with the same minimalist interface and keypad controls:
+
+- **KaiOS Calendar (default):** Opens the TCL's built-in Calendar app.
+- **Greg Calendar:** Opens the separately installed Greg Calendar app. Install Greg from KaiStore before choosing this edition. The tested device registers Greg at `http://greg.localhost/manifest.webmanifest`.
+
+Build the original KaiOS Calendar edition:
+
+```powershell
+py .\build_finn_launcher.py ..\original-launcher.zip
+```
+
+Build the Greg Calendar edition:
+
+```powershell
+py .\build_finn_launcher.py ..\original-launcher.zip --greg
+```
+
+The two builds are saved separately in `..\Finn-Launcher-Build\application.zip` and `..\Finn-Launcher-Greg-Build\application.zip`. Both require the owner's compatible, unmodified TCL launcher ZIP.
+
+**Notification-friendly layout:** Both editions position the four-item menu 78px above the bottom of the display. This preserves space beneath Notes for native missed-call and unread-message icons and their numeric counters. The layout was visually tested with and without notifications on the developer's TCL Flip 4 5G.
+
 ## Prerequisites
 
 1. A compatible **TCL FLIP 4 5G** and a functioning **Flipfull** installation. Install Flipfull by following its own documentation first. This project **does not** install Flipfull or enable phone debugging/root access.
@@ -33,7 +56,8 @@ The device's **system** wallpaper should also be set to the supplied solid-black
 | File | Purpose |
 | --- | --- |
 | `build_finn_launcher.py` | Builds a launcher ZIP from the owner's original TCL ZIP. Does not access the phone. |
-| `finn-launcher.js` | Menu behavior and native TCL app integration. |
+| `finn-launcher.js` | Default edition: menu behavior and built-in KaiOS Calendar. |
+| `finn-launcher-greg.js` | Alternative edition: same menu with Greg Calendar integration. |
 | `finn-launcher.css` | Minimal text/menu styling. |
 | `finn-launcher-wallpaper.css` | Displays the Finn artwork on the launcher background. |
 | `Finn-Launcher-Wallpaper.png` | Monochrome Labrador home-screen artwork. |
@@ -45,31 +69,45 @@ This repository intentionally **does not** include the full modified `applicatio
 
 The following assumes that `adb` is on your PATH and that PowerShell is open in the repository directory. If ADB is installed elsewhere, substitute its full path (for example `C:\platform-tools\adb.exe`). Run **one command at a time** and inspect the output at each step.
 
-### 1. Connect and back up your original launcher
+### 1. Connect and verify your original launcher backup
 
 ```powershell
 adb devices
 adb root
 adb shell id
-adb pull /data/local/userinit/overlays/launcher/application.zip .\original-launcher.zip
+Test-Path ..\original-launcher.zip
 ```
 
-The `adb shell id` command should report `uid=0(root)`. The pulled ZIP must be the **original compatible TCL launcher** from the Flipfull overlay, not an already modified Finn Launcher version. Keep a separate copy of `original-launcher.zip` in a safe location off the phone. If the overlay location is absent, stop and consult Flipfull's documentation for your specific installation instead of guessing another path.
+The `adb shell id` command should report `uid=0(root)`. The input ZIP must be a **verified, unmodified, compatible TCL launcher** preserved from your own installation. Do not assume the currently active overlay is original: it may already contain Finn Launcher or another customization. Never overwrite a known-good original backup with an unverified pull. Keep a separate copy of `original-launcher.zip` in a safe location off the phone. If the overlay location is absent, stop and consult Flipfull's documentation for your specific installation instead of guessing another path.
 
 **Do not commit `original-launcher.zip` to GitHub.** It contains TCL software.
 
 ### 2. Build Finn Launcher
 
+Choose the calendar edition you want to install.
+
+**KaiOS Calendar (default):**
+
 ```powershell
-py .\build_finn_launcher.py .\original-launcher.zip
+py .\build_finn_launcher.py ..\original-launcher.zip
+$buildPath = '..\Finn-Launcher-Build\application.zip'
 ```
 
-The script verifies its expected TCL service-bridge and HTML anchors, rejects already-customized input, and writes its output to `..\Finn-Launcher-Build\application.zip`. The source ZIP remains unchanged. If the script reports an unsupported launcher, **stop**: do not force the patch onto an untested firmware version.
+**Greg Calendar (requires Greg installed from KaiStore):**
+
+```powershell
+py .\build_finn_launcher.py ..\original-launcher.zip --greg
+$buildPath = '..\Finn-Launcher-Greg-Build\application.zip'
+```
+
+Use the selected `$buildPath` for the remaining installation steps.
+
+The builder checks compatibility, rejects an already-customized source ZIP, and verifies ZIP integrity. If it reports an unsupported launcher, stop rather than bypassing its safety checks.
 
 ### 3. Verify the build before installing
 
 ```powershell
-Get-FileHash ..\Finn-Launcher-Build\application.zip -Algorithm SHA256
+Get-FileHash $buildPath -Algorithm SHA256
 ```
 
 Record the resulting SHA-256 digest; it will be specific to the generated package. The builder performs a ZIP integrity check as well.
@@ -77,7 +115,8 @@ Record the resulting SHA-256 digest; it will be specific to the generated packag
 ### 4. Stage on the phone and compare checksums
 
 ```powershell
-adb push ..\Finn-Launcher-Build\application.zip /data/local/userinit/overlays/launcher/application.zip.finn-stage
+adb push $buildPath /data/local/userinit/overlays/launcher/application.zip.finn-stage
+adb shell chmod 666 /data/local/userinit/overlays/launcher/application.zip.finn-stage
 adb shell sha256sum /data/local/userinit/overlays/launcher/application.zip.finn-stage
 ```
 
@@ -106,7 +145,16 @@ The installed filename **must** be `application.zip`; Finn Launcher is the name 
 
 ```powershell
 adb root
-adb push .\original-launcher.zip /data/local/userinit/overlays/launcher/application.zip.rollback-stage
+adb shell id
+Get-FileHash ..\original-launcher.zip -Algorithm SHA256
+adb push ..\original-launcher.zip /data/local/userinit/overlays/launcher/application.zip.rollback-stage
+adb shell chmod 666 /data/local/userinit/overlays/launcher/application.zip.rollback-stage
+adb shell sha256sum /data/local/userinit/overlays/launcher/application.zip.rollback-stage
+```
+
+Verify that the staged SHA-256 matches the computer's backup before continuing. Only after the hashes match, activate the rollback and reboot:
+
+```powershell
 adb shell mv -f /data/local/userinit/overlays/launcher/application.zip.rollback-stage /data/local/userinit/overlays/launcher/application.zip
 adb reboot
 ```

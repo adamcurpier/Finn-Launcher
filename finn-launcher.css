@@ -1,6 +1,6 @@
 /* Visual-only diagnostic: no stock elements are hidden or resized. */
 #finn-launcher-menu { position: fixed !important; z-index: 2147483647 !important;
-  left: 10px !important; bottom: 34px !important; width: 130px !important;
+  left: 10px !important; bottom: 78px !important; width: 130px !important;
   display: block !important; visibility: visible !important; opacity: 1 !important;
   background: transparent !important; color: #ffffff !important;
   font: 16px/27px sans-serif !important; pointer-events: none !important;

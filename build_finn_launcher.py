@@ -32,13 +32,15 @@ ADDITIONS = (
 
 
 def main():
-    if len(sys.argv) != 2:
+    if len(sys.argv) not in (2, 3) or (len(sys.argv) == 3 and sys.argv[2] != "--greg"):
         raise SystemExit(
-            "Usage: py build_finn_launcher.py ORIGINAL_APPLICATION_ZIP"
+            "Usage: py build_finn_launcher.py ORIGINAL_APPLICATION_ZIP [--greg]"
         )
 
     source = Path(sys.argv[1]).resolve()
-    output = ROOT.parent / "Finn-Launcher-Build" / "application.zip"
+    edition = "greg" if len(sys.argv) == 3 else "kaios"
+    js_source = "finn-launcher-greg.js" if edition == "greg" else "finn-launcher.js"
+    output = ROOT.parent / ("Finn-Launcher-Greg-Build" if edition == "greg" else "Finn-Launcher-Build") / "application.zip"
     temporary = output.with_suffix(".zip.tmp")
 
     if not source.is_file():
@@ -46,7 +48,7 @@ def main():
     if source == output or source == temporary:
         raise SystemExit("The original ZIP must be separate from the build output.")
 
-    missing = [name for name in ASSETS if not (ROOT / name).is_file()]
+    missing = [name for name in ASSETS if not (ROOT / (js_source if name == "finn-launcher.js" else name)).is_file()]
     if missing:
         raise SystemExit("Missing Finn Launcher files: " + ", ".join(missing))
 
@@ -87,7 +89,7 @@ def main():
                         data = patched_html
                     result.writestr(entry, data)
                 for name in ASSETS:
-                    result.write(ROOT / name, arcname=name, compress_type=ZIP_DEFLATED)
+                    result.write(ROOT / (js_source if name == "finn-launcher.js" else name), arcname=name, compress_type=ZIP_DEFLATED)
 
         with ZipFile(temporary, "r") as check:
             invalid = check.testzip()
